@@ -12,3 +12,37 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Users {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  reservations Reservation[]
+}
+
+model Rooms {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  capacity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+}
+
+model Reservation {
+  id         String   @id @default(uuid())
+  userId     String
+  roomId     String
+  startTime  DateTime
+  endTime    DateTime
+  status     String  // PENDING | CONFIRMED | CANCELLED | EXPIRED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       Users    @relation(fields: [userId], references: [id])
+  room       Rooms    @relation(fields: [roomId], references: [id])
+}
