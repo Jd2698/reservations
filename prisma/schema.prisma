@@ -13,36 +13,48 @@ datasource db {
   provider = "postgresql"
 }
 
-model Users {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  reservations Reservation[]
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
 }
 
-model Rooms {
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  reservations Reservation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Room {
   id        String   @id @default(uuid())
   name      String   @unique
   capacity  Int
+  reservations Reservation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  reservations Reservation[]
 }
 
 model Reservation {
   id         String   @id @default(uuid())
   userId     String
   roomId     String
+
   startTime  DateTime
   endTime    DateTime
-  status     String  // PENDING | CONFIRMED | CANCELLED | EXPIRED
+
+  status     ReservationStatus @default(PENDING)
+
+  user       User    @relation(fields: [userId], references: [id])
+  room       Room    @relation(fields: [roomId], references: [id])
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  user       Users    @relation(fields: [userId], references: [id])
-  room       Rooms    @relation(fields: [roomId], references: [id])
+  @@index([roomId, startTime, endTime])
 }
