@@ -20,7 +20,8 @@
     "paths": {
       "*": ["node_modules/*"],
       "@prisma/*": ["./node_modules/@prisma/*"],
-      "@prisma-generated/*": ["./src/generated/prisma/*"]
+      "@prisma-generated/*": ["./src/generated/prisma/*"],
+      "@config/*": ["./src/config/*"]
     }
   }
 }
