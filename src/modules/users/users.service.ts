@@ -6,6 +6,20 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 export class UsersService {
     constructor(private readonly prismaService: PrismaService) { }
 
+    async findByEmail(email: string) {
+        const user = await this.prismaService.user.findUnique({
+            where: { email },
+            select: {
+                id: true,
+                email: true,
+                password: true
+            }
+        });
+
+        if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        return user;
+    }
+
     async findAll() {
         return this.prismaService.user.findMany({
             select: {
