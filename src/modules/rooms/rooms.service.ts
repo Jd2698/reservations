@@ -1,5 +1,5 @@
 import { PrismaService } from '@app/prisma/prisma.service';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class RoomsService {
@@ -31,7 +31,7 @@ export class RoomsService {
     async delete(id: string) {
         const exists = await this.prismaService.room.count({ where: { id } });
 
-        if (exists == 0) throw new HttpException('Room not found', HttpStatus.NOT_FOUND);
+        if (exists == 0) throw new NotFoundException('Room not found');
 
         return this.prismaService.room.delete({
             where: { id }
