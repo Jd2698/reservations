@@ -1,6 +1,6 @@
 import { PrismaService } from '@app/prisma/prisma.service';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateReservationDto } from './dto';
+import { CreateReservationDto, RescheduleReservationDto } from './dto';
 import { ReservationStatus } from '@app/generated/prisma/enums';
 
 @Injectable()
@@ -28,6 +28,46 @@ export class ReservationsService {
             data: {
                 ...dto,
                 userId,
+                startTime,
+                endTime,
+            },
+        });
+    }
+
+    async reschedule(reservationId: string, dto: RescheduleReservationDto, authUserId: string) {
+
+        const reservation = await this.prismaService.reservation.findUnique({
+            where: { id: reservationId },
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('RESERVATION_NOT_FOUND');
+        }
+
+        if (reservation.userId !== authUserId) {
+            throw new ForbiddenException('NOT_ALLOWED');
+        }
+
+        if (
+            reservation.status === ReservationStatus.CANCELLED ||
+            reservation.status === ReservationStatus.EXPIRED
+        ) {
+            throw new BadRequestException('RESERVATION_NOT_RESCHEDULABLE');
+        }
+
+        const startTime = new Date(dto.startTime);
+        const endTime = new Date(dto.endTime);
+
+        await this.validateDate({
+            roomId: reservation.roomId,
+            startTime,
+            endTime,
+            reservationId
+        })
+
+        return this.prismaService.reservation.update({
+            where: { id: reservation.id },
+            data: {
                 startTime,
                 endTime,
             },
@@ -76,16 +116,20 @@ export class ReservationsService {
         roomId: string;
         startTime: Date;
         endTime: Date;
+        reservationId?: string;
     }) {
-        const { roomId, startTime, endTime } = params;
+        const { roomId, reservationId, startTime, endTime } = params;
 
         if (startTime >= endTime) {
-            throw new BadRequestException('End time must be after start time');
+            throw new BadRequestException('INVALID_DATE_RANGE');
         }
 
         const conflict = await this.prismaService.reservation.findFirst({
             where: {
                 roomId: roomId,
+                id: {
+                    not: reservationId
+                },
                 status: {
                     notIn: [
                         ReservationStatus.CANCELLED,
