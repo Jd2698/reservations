@@ -1,7 +1,7 @@
 import { PrismaService } from '@app/prisma/prisma.service';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateReservationDto, UpdateResrvationDto } from './dto';
-import { UUID } from 'crypto';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CreateReservationDto } from './dto';
+import { ReservationStatus } from '@app/generated/prisma/enums';
 
 @Injectable()
 export class ReservationsService {
@@ -11,50 +11,100 @@ export class ReservationsService {
         return this.prismaService.reservation.findMany();
     }
 
-    async create(createReservationDto: CreateReservationDto, authUserId: string) {
-        const { userId, startTime, endTime } = createReservationDto;
+    async create(dto: CreateReservationDto, authUserId: string) {
 
-        if (!userId) {
-            createReservationDto.userId = authUserId;
-        }
+        const userId = dto.userId ?? authUserId;
+        const startTime = new Date(dto.startTime);
+        const endTime = new Date(dto.endTime);
+
+        // throw error if date is invalid
+        await this.validateDate({
+            roomId: dto.roomId,
+            startTime,
+            endTime,
+        });
 
         return this.prismaService.reservation.create({
             data: {
-                ...createReservationDto,
-                userId: createReservationDto.userId as string,
-                startTime: new Date(startTime),
-                endTime: new Date(endTime),
+                ...dto,
+                userId,
+                startTime,
+                endTime,
             },
         });
     }
 
-    async update(id: string, updateReservationDto: UpdateResrvationDto, authUserId: string) {
-        const { userId, startTime, endTime } = updateReservationDto;
+    async cancel(reservationId: string, authUserId: string) {
 
-        const exists = await this.checkExistence(id);
-        if (!exists) throw new NotFoundException('Reservation not found');
+        const reservation = await this.prismaService.reservation.findUnique({
+            where: { id: reservationId },
+        });
 
-        if (!userId) {
-            updateReservationDto.userId = authUserId;
+        if (!reservation) {
+            throw new NotFoundException('RESERVATION_NOT_FOUND');
+        }
+
+        if (reservation.userId !== authUserId) {
+            throw new ForbiddenException('NOT_ALLOWED');
+        }
+
+        if (
+            reservation.status === ReservationStatus.CANCELLED ||
+            reservation.status === ReservationStatus.EXPIRED
+        ) {
+            throw new BadRequestException('RESERVATION_NOT_CANCELLABLE');
         }
 
         return this.prismaService.reservation.update({
-            where: { id },
+            where: { id: reservationId },
             data: {
-                ...updateReservationDto,
-                startTime: startTime ? new Date(startTime) : undefined,
-                endTime: endTime ? new Date(endTime) : undefined,
+                status: ReservationStatus.CANCELLED,
             },
         });
     }
 
     async delete(id: string) {
         const exists = await this.checkExistence(id);
-        if (!exists) throw new NotFoundException('Reservation not found');
+        if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
 
         return this.prismaService.reservation.delete({
             where: { id },
         });
+    }
+
+    async validateDate(params: {
+        roomId: string;
+        startTime: Date;
+        endTime: Date;
+    }) {
+        const { roomId, startTime, endTime } = params;
+
+        if (startTime >= endTime) {
+            throw new BadRequestException('End time must be after start time');
+        }
+
+        const conflict = await this.prismaService.reservation.findFirst({
+            where: {
+                roomId: roomId,
+                status: {
+                    notIn: [
+                        ReservationStatus.CANCELLED,
+                        ReservationStatus.EXPIRED
+                    ]
+                },
+                startTime: {
+                    lt: new Date(endTime) // less than endTime
+                },
+                endTime: {
+                    gt: new Date(startTime) // greater than startTime
+                }
+            }
+        });
+
+
+        if (conflict) {
+            throw new ConflictException('ROOM_ALREADY_RESERVED');
+        }
     }
 
     async checkExistence(id: string): Promise<boolean> {

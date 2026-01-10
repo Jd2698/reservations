@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
-import { CreateReservationDto, UpdateResrvationDto } from './dto';
+import { CreateReservationDto } from './dto';
 import { User, UserPayload } from '@app/common/decorators';
 
 @Controller('reservations')
@@ -17,13 +17,12 @@ export class ReservationsController {
     return this.reservationsService.create(createReservationDto, user.sub);
   }
 
-  @Patch(':id')
-  async update(
+  @Patch(':id/cancel')
+  async cancel(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateReservationDto: UpdateResrvationDto,
     @User() user: UserPayload,
   ) {
-    return this.reservationsService.update(id, updateReservationDto, user.sub);
+    return this.reservationsService.cancel(id, user.sub);
   }
 
   @Delete(':id')
