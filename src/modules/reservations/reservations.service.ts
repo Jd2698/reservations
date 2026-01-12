@@ -59,7 +59,7 @@ export class ReservationsService {
 
     async cancel(reservationId: string, authUserId: string) {
 
-       const reservation = await this.getValidReservationForUser(reservationId, authUserId);
+        const reservation = await this.getValidReservationForUser(reservationId, authUserId);
 
         return this.prismaService.reservation.update({
             where: { id: reservation.id },
@@ -110,6 +110,14 @@ export class ReservationsService {
     }) {
         const { roomId, reservationId, startTime, endTime } = params;
 
+
+        const now = new Date();
+        const bufferMs = 60 * 1000; // 1 minute buffer
+
+        if (startTime.getTime() < now.getTime() + bufferMs) {
+            throw new BadRequestException('START_TIME_IN_PAST');
+        }
+
         if (startTime >= endTime) {
             throw new BadRequestException('INVALID_DATE_RANGE');
         }
@@ -117,9 +125,7 @@ export class ReservationsService {
         const conflict = await this.prismaService.reservation.findFirst({
             where: {
                 roomId: roomId,
-                id: {
-                    not: reservationId
-                },
+                id: reservationId ? { not: reservationId } : undefined,
                 status: {
                     notIn: [
                         ReservationStatus.CANCELLED,
