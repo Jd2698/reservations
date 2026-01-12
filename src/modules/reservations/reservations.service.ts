@@ -36,24 +36,7 @@ export class ReservationsService {
 
     async reschedule(reservationId: string, dto: RescheduleReservationDto, authUserId: string) {
 
-        const reservation = await this.prismaService.reservation.findUnique({
-            where: { id: reservationId },
-        });
-
-        if (!reservation) {
-            throw new NotFoundException('RESERVATION_NOT_FOUND');
-        }
-
-        if (reservation.userId !== authUserId) {
-            throw new ForbiddenException('NOT_ALLOWED');
-        }
-
-        if (
-            reservation.status === ReservationStatus.CANCELLED ||
-            reservation.status === ReservationStatus.EXPIRED
-        ) {
-            throw new BadRequestException('RESERVATION_NOT_RESCHEDULABLE');
-        }
+        const reservation = await this.getValidReservationForUser(reservationId, authUserId);
 
         const startTime = new Date(dto.startTime);
         const endTime = new Date(dto.endTime);
@@ -76,6 +59,27 @@ export class ReservationsService {
 
     async cancel(reservationId: string, authUserId: string) {
 
+       const reservation = await this.getValidReservationForUser(reservationId, authUserId);
+
+        return this.prismaService.reservation.update({
+            where: { id: reservation.id },
+            data: {
+                status: ReservationStatus.CANCELLED,
+            },
+        });
+    }
+
+    async delete(id: string) {
+        const exists = await this.checkExistence(id);
+        if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
+
+        return this.prismaService.reservation.delete({
+            where: { id },
+        });
+    }
+
+    async getValidReservationForUser(reservationId: string, authUserId: string) {
+
         const reservation = await this.prismaService.reservation.findUnique({
             where: { id: reservationId },
         });
@@ -95,21 +99,7 @@ export class ReservationsService {
             throw new BadRequestException('RESERVATION_NOT_CANCELLABLE');
         }
 
-        return this.prismaService.reservation.update({
-            where: { id: reservationId },
-            data: {
-                status: ReservationStatus.CANCELLED,
-            },
-        });
-    }
-
-    async delete(id: string) {
-        const exists = await this.checkExistence(id);
-        if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
-
-        return this.prismaService.reservation.delete({
-            where: { id },
-        });
+        return reservation;
     }
 
     async validateDate(params: {
