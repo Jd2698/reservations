@@ -9,6 +9,15 @@
 * 🟢 You can import this file directly.
 */
 
+export const Role = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+  STAFF: 'STAFF'
+} as const
+
+export type Role = (typeof Role)[keyof typeof Role]
+
+
 export const ReservationStatus = {
   PENDING: 'PENDING',
   CONFIRMED: 'CONFIRMED',

@@ -1,12 +1,16 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto, RescheduleReservationDto } from './dto';
-import { User, UserPayload } from '@app/common/decorators';
+import { Roles, User, UserPayload } from '@app/common/decorators';
+import { RolesGuard } from '../auth/guards';
+import { Role } from '@app/common/enums';
 
+@UseGuards(RolesGuard)
 @Controller('reservations')
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) { }
 
+  @Roles(Role.ADMIN, Role.STAFF)
   @Get()
   findAll() {
     return this.reservationsService.findAll();
