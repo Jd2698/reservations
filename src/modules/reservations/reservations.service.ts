@@ -36,18 +36,7 @@ export class ReservationsService {
 
     async reschedule(reservationId: string, dto: RescheduleReservationDto, authUserId: string) {
 
-        const reservation = await this.prismaService.reservation.findUnique({
-            where: { id: reservationId },
-            select: { id: true, userId: true, roomId: true, status: true }
-        });
-
-        if (!reservation) {
-            throw new NotFoundException('RESERVATION_NOT_FOUND');
-        }
-
-        if (reservation.userId !== authUserId) {
-            throw new ForbiddenException('NOT_ALLOWED');
-        }
+        const reservation = await this.getReservationOrFail(reservationId, authUserId);
 
         if (
             reservation.status === ReservationStatus.CANCELLED ||
@@ -77,24 +66,13 @@ export class ReservationsService {
 
     async confirm(reservationId: string, authUserId: string) {
 
-        const reservation = await this.prismaService.reservation.findUnique({
-            where: { id: reservationId }
-        });
-
-        if (!reservation) {
-            throw new NotFoundException('RESERVATION_NOT_FOUND');
-        }
-
-        if (reservation.userId !== authUserId) {
-            throw new ForbiddenException('NOT_ALLOWED');
-        }
+        const reservation = await this.getReservationOrFail(reservationId, authUserId);
 
         if (reservation.status !== ReservationStatus.PENDING) {
             throw new BadRequestException('RESERVATION_NOT_CONFIRMABLE');
         }
 
-        const now = new Date();
-        if (reservation.startTime < now) {
+        if (reservation.startTime < new Date()) {
             throw new BadRequestException('RESERVATION_ALREADY_STARTED');
         }
 
@@ -125,17 +103,7 @@ export class ReservationsService {
 
     async cancel(reservationId: string, authUserId: string) {
 
-        const reservation = await this.prismaService.reservation.findUnique({
-            where: { id: reservationId }
-        });
-
-        if (!reservation) {
-            throw new NotFoundException('RESERVATION_NOT_FOUND');
-        }
-
-        if (reservation.userId !== authUserId) {
-            throw new ForbiddenException('NOT_ALLOWED');
-        }
+        const reservation = await this.getReservationOrFail(reservationId, authUserId);
 
         if (
             reservation.status === ReservationStatus.CANCELLED ||
@@ -204,6 +172,25 @@ export class ReservationsService {
         if (conflict) {
             throw new ConflictException('ROOM_ALREADY_RESERVED');
         }
+    }
+
+    private async getReservationOrFail(
+        reservationId: string,
+        authUserId: string,
+    ) {
+        const reservation = await this.prismaService.reservation.findUnique({
+            where: { id: reservationId },
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('RESERVATION_NOT_FOUND');
+        }
+
+        if (reservation.userId !== authUserId) {
+            throw new ForbiddenException('NOT_ALLOWED');
+        }
+
+        return reservation;
     }
 
     async checkExistence(id: string): Promise<boolean> {
