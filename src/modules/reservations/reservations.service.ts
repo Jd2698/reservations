@@ -36,7 +36,25 @@ export class ReservationsService {
 
     async reschedule(reservationId: string, dto: RescheduleReservationDto, authUserId: string) {
 
-        const reservation = await this.getValidReservationForUser(reservationId, authUserId);
+        const reservation = await this.prismaService.reservation.findUnique({
+            where: { id: reservationId },
+            select: { id: true, userId: true, roomId: true, status: true }
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('RESERVATION_NOT_FOUND');
+        }
+
+        if (reservation.userId !== authUserId) {
+            throw new ForbiddenException('NOT_ALLOWED');
+        }
+
+        if (
+            reservation.status === ReservationStatus.CANCELLED ||
+            reservation.status === ReservationStatus.EXPIRED
+        ) {
+            throw new BadRequestException('RESERVATION_NOT_RESCHEDULABLE');
+        }
 
         const startTime = new Date(dto.startTime);
         const endTime = new Date(dto.endTime);
@@ -57,31 +75,58 @@ export class ReservationsService {
         });
     }
 
-    async cancel(reservationId: string, authUserId: string) {
+    async confirm(reservationId: string, authUserId: string) {
 
-        const reservation = await this.getValidReservationForUser(reservationId, authUserId);
+        const reservation = await this.prismaService.reservation.findUnique({
+            where: { id: reservationId }
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('RESERVATION_NOT_FOUND');
+        }
+
+        if (reservation.userId !== authUserId) {
+            throw new ForbiddenException('NOT_ALLOWED');
+        }
+
+        if (reservation.status !== ReservationStatus.PENDING) {
+            throw new BadRequestException('RESERVATION_NOT_CONFIRMABLE');
+        }
+
+        const now = new Date();
+        if (reservation.startTime < now) {
+            throw new BadRequestException('RESERVATION_ALREADY_STARTED');
+        }
+
+        const conflict = await this.prismaService.reservation.findFirst({
+            where: {
+                roomId: reservation.roomId,
+                status: ReservationStatus.CONFIRMED,
+                startTime: {
+                    lt: reservation.endTime,
+                },
+                endTime: {
+                    gt: reservation.startTime,
+                },
+            },
+        });
+
+        if (conflict) {
+            throw new ConflictException('ROOM_ALREADY_CONFIRMED');
+        }
 
         return this.prismaService.reservation.update({
             where: { id: reservation.id },
             data: {
-                status: ReservationStatus.CANCELLED,
+                status: ReservationStatus.CONFIRMED,
             },
         });
     }
 
-    async delete(id: string) {
-        const exists = await this.checkExistence(id);
-        if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
-
-        return this.prismaService.reservation.delete({
-            where: { id },
-        });
-    }
-
-    async getValidReservationForUser(reservationId: string, authUserId: string) {
+    async cancel(reservationId: string, authUserId: string) {
 
         const reservation = await this.prismaService.reservation.findUnique({
-            where: { id: reservationId },
+            where: { id: reservationId }
         });
 
         if (!reservation) {
@@ -99,7 +144,21 @@ export class ReservationsService {
             throw new BadRequestException('RESERVATION_NOT_CANCELLABLE');
         }
 
-        return reservation;
+        return this.prismaService.reservation.update({
+            where: { id: reservation.id },
+            data: {
+                status: ReservationStatus.CANCELLED,
+            },
+        });
+    }
+
+    async delete(id: string) {
+        const exists = await this.checkExistence(id);
+        if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
+
+        return this.prismaService.reservation.delete({
+            where: { id },
+        });
     }
 
     async validateDate(params: {

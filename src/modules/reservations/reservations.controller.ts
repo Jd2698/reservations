@@ -26,6 +26,14 @@ export class ReservationsController {
     return this.reservationsService.reschedule(id, updateReservationDto, user.sub);
   }
 
+  @Patch(':id/confirm')
+  confirm(
+    @Param('id', ParseUUIDPipe) id: string,
+    @User() user: UserPayload,
+  ) {
+    return this.reservationsService.confirm(id, user.sub);
+  }
+
   @Patch(':id/cancel')
   cancel(
     @Param('id', ParseUUIDPipe) id: string,
