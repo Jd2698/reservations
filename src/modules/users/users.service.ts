@@ -24,7 +24,8 @@ export class UsersService {
             select: {
                 id: true,
                 email: true,
-                password: true
+                password: true,
+                role: true
             }
         });
 
@@ -36,7 +37,8 @@ export class UsersService {
         return this.prismaService.user.findMany({
             select: {
                 id: true,
-                email: true
+                email: true,
+                role: true
             }
         });
     }

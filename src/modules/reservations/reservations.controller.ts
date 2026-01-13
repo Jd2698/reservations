@@ -10,7 +10,7 @@ import { Role } from '@app/common/enums';
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) { }
 
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN)
   @Get()
   findAll() {
     return this.reservationsService.findAll();
