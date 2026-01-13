@@ -1,10 +1,22 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 
 @Injectable()
 export class UsersService {
     constructor(private readonly prismaService: PrismaService) { }
+
+    async checkEmailAvailability(email: string): Promise<boolean> {
+        const user = await this.prismaService.user.findUnique({
+            where: { email },
+        });
+
+        if (user) {
+            throw new UnauthorizedException('USER_ALREADY_EXISTS');
+        }
+
+        return true;
+    }
 
     async findByEmail(email: string) {
         const user = await this.prismaService.user.findUnique({
