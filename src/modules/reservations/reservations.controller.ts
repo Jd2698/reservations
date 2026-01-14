@@ -8,17 +8,19 @@ import { Role } from '@app/common/enums';
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) { }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.STAFF)
   @Get()
   findAll() {
     return this.reservationsService.findAll();
   }
 
+  @Roles(Role.STAFF, Role.USER)
   @Post()
   create(@Body() createReservationDto: CreateReservationDto, @User() user: UserPayload) {
-    return this.reservationsService.create(createReservationDto, user.sub);
+    return this.reservationsService.create(createReservationDto, user);
   }
 
+  @Roles(Role.STAFF, Role.USER)
   @Patch(':id/reschedule')
   reschedule(
     @Param('id', ParseUUIDPipe) id: string,
@@ -28,6 +30,7 @@ export class ReservationsController {
     return this.reservationsService.reschedule(id, updateReservationDto, user.sub);
   }
 
+  @Roles(Role.STAFF)
   @Patch(':id/confirm')
   confirm(
     @Param('id', ParseUUIDPipe) id: string,
@@ -36,6 +39,7 @@ export class ReservationsController {
     return this.reservationsService.confirm(id, user.sub);
   }
 
+  @Roles(Role.STAFF, Role.USER)
   @Patch(':id/cancel')
   cancel(
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,6 +48,7 @@ export class ReservationsController {
     return this.reservationsService.cancel(id, user.sub);
   }
 
+  @Roles(Role.ADMIN)
   @Delete(':id')
   delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservationsService.delete(id);
