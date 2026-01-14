@@ -8,6 +8,7 @@ import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { ReservationsModule } from './modules/reservations/reservations.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReservationTasksService } from './modules/reservations/reservation-tasks.service';
+import { RolesGuard } from './modules/auth/guards';
 
 @Module({
   imports: [
@@ -23,6 +24,10 @@ import { ReservationTasksService } from './modules/reservations/reservation-task
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     ReservationTasksService],
 })
