@@ -2,6 +2,8 @@ import { PrismaService } from '@app/prisma/prisma.service';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReservationDto, RescheduleReservationDto } from './dto';
 import { ReservationStatus } from '@app/generated/prisma/enums';
+import { UserPayload } from '@app/common/decorators';
+import { Role } from '@app/common/enums';
 
 @Injectable()
 export class ReservationsService {
@@ -11,9 +13,14 @@ export class ReservationsService {
         return this.prismaService.reservation.findMany();
     }
 
-    async create(dto: CreateReservationDto, authUserId: string) {
+    async create(dto: CreateReservationDto, authUser: UserPayload) {
 
-        const userId = dto.userId ?? authUserId;
+        if (dto.userId && authUser.role != Role.STAFF) throw new ForbiddenException('USERID_NOT_ALLOWED');
+
+        const room = await this.prismaService.room.findUnique({ where: { id: dto.roomId }, select: { id: true } })
+        if (!room) throw new NotFoundException('ROOM_NOT_FOUND')
+
+        const userId = dto.userId ?? authUser.sub;
         const startTime = new Date(dto.startTime);
         const endTime = new Date(dto.endTime);
 
