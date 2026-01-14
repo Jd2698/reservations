@@ -17,8 +17,7 @@ export class ReservationsService {
 
         if (dto.userId && authUser.role != Role.STAFF) throw new ForbiddenException('USERID_NOT_ALLOWED');
 
-        const room = await this.prismaService.room.findUnique({ where: { id: dto.roomId }, select: { id: true } })
-        if (!room) throw new NotFoundException('ROOM_NOT_FOUND')
+        await this.checkRoomExistence(dto.roomId);
 
         const userId = dto.userId ?? authUser.sub;
         const startTime = new Date(dto.startTime);
@@ -128,7 +127,7 @@ export class ReservationsService {
     }
 
     async delete(id: string) {
-        const exists = await this.checkExistence(id);
+        const exists = await this.verifyExistence(id);
         if (!exists) throw new NotFoundException('RESERVATION_NOT_FOUND');
 
         return this.prismaService.reservation.delete({
@@ -200,7 +199,13 @@ export class ReservationsService {
         return reservation;
     }
 
-    async checkExistence(id: string): Promise<boolean> {
+    private async checkRoomExistence(id: string) {
+        const room = await this.prismaService.room.findUnique({ where: { id }, select: { id: true } })
+
+        if (!room) throw new NotFoundException('ROOM_NOT_FOUND')
+    }
+
+    async verifyExistence(id: string): Promise<boolean> {
         const reservation = await this.prismaService.reservation.findUnique({
             where: { id },
             select: { id: true },
