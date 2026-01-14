@@ -3,6 +3,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto';
 import * as bcrypt from 'bcrypt';
+import { Role } from '@app/common/enums';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +29,7 @@ export class AuthService {
         await this.usersService.checkEmailAvailability(dto.email);
 
         const hash = await bcrypt.hash(dto.password, 10);
-        const newUser = await this.usersService.create({ ...dto, password: hash });
+        const newUser = await this.usersService.create({ ...dto, role: Role.USER, password: hash });
 
         const payload = { sub: newUser.id, email: newUser.email };
         return {

@@ -1,12 +1,13 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
+import * as bcrypt from 'bcrypt'
 
 @Injectable()
 export class UsersService {
     constructor(private readonly prismaService: PrismaService) { }
 
-    async checkEmailAvailability(email: string): Promise<boolean> {
+    async checkEmailAvailability(email: string){
         const user = await this.prismaService.user.findUnique({
             where: { email },
         });
@@ -14,8 +15,6 @@ export class UsersService {
         if (user) {
             throw new UnauthorizedException('USER_ALREADY_EXISTS');
         }
-
-        return true;
     }
 
     async findByEmail(email: string) {
@@ -43,16 +42,23 @@ export class UsersService {
         });
     }
 
-    async create(createUserDto: CreateUserDto) {
+    async create(dto: CreateUserDto) {
+        await this.checkEmailAvailability(dto.email);
+
+        const hash = await bcrypt.hash(dto.password, 10);
+
         return this.prismaService.user.create({
-            data: createUserDto
+            data: {...dto, password: hash }
         });
     }
 
-    async update(id: string, updateUserDto: UpdateUserDto) {
+    async update(id: string, dto: UpdateUserDto) {
+
+        const newPassword = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+
         return this.prismaService.user.update({
             where: { id },
-            data: updateUserDto
+            data: { ...dto, password: newPassword}
         })
     }
 

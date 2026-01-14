@@ -2,10 +2,8 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGu
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto, RescheduleReservationDto } from './dto';
 import { Roles, User, UserPayload } from '@app/common/decorators';
-import { RolesGuard } from '../auth/guards';
 import { Role } from '@app/common/enums';
 
-@UseGuards(RolesGuard)
 @Controller('reservations')
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) { }
