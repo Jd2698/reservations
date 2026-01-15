@@ -1,13 +1,15 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import * as bcrypt from 'bcrypt'
+import { UserPayload } from '@app/common/decorators';
+import { Role } from '@app/generated/prisma/enums';
 
 @Injectable()
 export class UsersService {
     constructor(private readonly prismaService: PrismaService) { }
 
-    async checkEmailAvailability(email: string){
+    async checkEmailAvailability(email: string) {
         const user = await this.prismaService.user.findUnique({
             where: { email },
         });
@@ -28,7 +30,7 @@ export class UsersService {
             }
         });
 
-        if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        if (!user) throw new HttpException('USER_NOT_FOUND', HttpStatus.NOT_FOUND);
         return user;
     }
 
@@ -48,7 +50,7 @@ export class UsersService {
         const hash = await bcrypt.hash(dto.password, 10);
 
         return this.prismaService.user.create({
-            data: {...dto, password: hash }
+            data: { ...dto, password: hash }
         });
     }
 
@@ -58,15 +60,27 @@ export class UsersService {
 
         return this.prismaService.user.update({
             where: { id },
-            data: { ...dto, password: newPassword}
+            data: { ...dto, password: newPassword }
         })
     }
 
-    async delete(id: string) {
-        const exists = await this.prismaService.user.count({ where: { id } });
+    async delete(userId: string, authUser: UserPayload) {
 
-        if (exists == 0) throw new NotFoundException('User not found');
+        if(userId != authUser.sub && authUser.role != Role.ADMIN) throw new ForbiddenException('ROLE_NOT_ALLOWED_FOR_ACTION')
 
-        return this.prismaService.user.delete({ where: { id } });
+        await this.checkExistence(userId);
+
+        return this.prismaService.user.delete({
+            where: { id: userId }
+        });
+    }
+
+    async checkExistence(userId: string) {
+        const user = await this.prismaService.user.findFirst({
+            where: { id: userId },
+            select: { id: true }
+        });
+
+        if (!user) throw new NotFoundException('USER_NOT_FOUND');
     }
 }

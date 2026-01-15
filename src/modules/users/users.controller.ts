@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { Roles } from '@app/common/decorators';
+import { Roles, User, UserPayload } from '@app/common/decorators';
 import { Role } from '@app/common/enums';
 
 @Roles(Role.ADMIN)
@@ -25,8 +25,9 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @Roles()
   @Delete(':id')
-  delete(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.delete(id);
+  delete(@Param('id', ParseUUIDPipe) id: string, @User() authUser: UserPayload) {
+    return this.usersService.delete(id, authUser);
   }
 }
