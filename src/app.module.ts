@@ -4,11 +4,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
-import { AuthGuard } from './modules/auth/guards/auth.guard';
+import { AuthGuard } from './modules/auth/guards';
 import { ReservationsModule } from './modules/reservations/reservations.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReservationTasksService } from './modules/reservations/reservation-tasks.service';
-import { RolesGuard } from './modules/auth/guards';
+import { RolesGuard } from './common/guards';
 
 @Module({
   imports: [
