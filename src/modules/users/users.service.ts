@@ -12,6 +12,7 @@ export class UsersService {
     async checkEmailAvailability(email: string) {
         const user = await this.prismaService.user.findUnique({
             where: { email },
+            select: { id: true}
         });
 
         if (user) {
