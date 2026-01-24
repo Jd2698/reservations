@@ -3,8 +3,9 @@ import { Test } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { Role } from '@app/generated/prisma/enums';
+import { UserPayload } from '@app/common/decorators';
 
-describe('CatsController', () => {
+describe('UsersService', () => {
     let service: UsersService;
 
     const prismaMock = {
@@ -13,7 +14,8 @@ describe('CatsController', () => {
             findFirst: jest.fn(),
             findMany: jest.fn(),
             create: jest.fn(),
-            update: jest.fn()
+            update: jest.fn(),
+            delete: jest.fn()
         },
     };
 
@@ -21,9 +23,9 @@ describe('CatsController', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             providers: [
-                UsersService, {
-                    provide: PrismaService, useValue: prismaMock
-                }],
+                UsersService,
+                { provide: PrismaService, useValue: prismaMock }
+            ],
         }).compile();
 
         service = moduleRef.get(UsersService);
@@ -95,6 +97,34 @@ describe('CatsController', () => {
                 role: true,
             },
         });
+    })
+
+    it('should delete user', async () => {
+        const id = '123';
+        const payload = {
+            sub: id,
+            role: Role.USER
+        } as UserPayload;
+
+        prismaMock.user.findFirst.mockResolvedValueOnce({ id });
+
+        const res = await service.delete(id, payload);
+        expect(prismaMock.user.delete).toHaveBeenCalledWith(
+            {
+                where: { id }
+            }
+        )
+    })
+
+    it('should throw ForbiddenException on delete', async () => {
+        const id = '123';
+        const payload = {
+            sub: '321',
+            role: Role.USER
+        } as UserPayload;
+
+
+        await expect(service.delete(id, payload)).rejects.toThrow('ROLE_NOT_ALLOWED_FOR_ACTION')
     })
 
     it('should throw if user not found in findByEmail', async () => {
