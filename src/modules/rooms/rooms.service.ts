@@ -1,5 +1,5 @@
 import { PrismaService } from '@app/prisma/prisma.service';
-import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateRoomDto, UpdateRoomDto } from './dto';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class RoomsService {
     }
 
     async update(roomId: string, dto: UpdateRoomDto) {
-        await this.checkRoomExistence(roomId)
+        await this.checkExistence(roomId)
 
         return this.prismaService.room.update({
             where: { id: roomId },
@@ -34,9 +34,7 @@ export class RoomsService {
     }
 
     async delete(roomId: string) {
-        const exists = await this.prismaService.room.count({ where: { id: roomId } });
-
-        if (exists == 0) throw new NotFoundException('Room not found');
+        await this.checkExistence(roomId)
 
         return this.prismaService.room.delete({
             where: { id: roomId }
@@ -56,7 +54,7 @@ export class RoomsService {
         if (room) throw new UnauthorizedException('ROOM_ALREADY_EXISTS');
     }
 
-    async checkRoomExistence(id: string) {
+    async checkExistence(id: string) {
         const room = await this.prismaService.room.findUnique({
             where: { id },
             select: { id: true }
